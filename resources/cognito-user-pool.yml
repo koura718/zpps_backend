@@ -1,0 +1,77 @@
+Resources:
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      # Generate a name based on the stage
+      UserPoolName: ${self:provider.stage}-user-pool
+      # Set email as an alias
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+
+  CognitoUserPoolIdentityProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Properties:
+      ProviderName: Google
+      ProviderType: Google
+      UserPoolId:
+        Ref: CognitoUserPool
+      ProviderDetails:
+        client_id: ${self:provider.environment.GOOGLE_CLIENT_ID}
+        client_secret: ${self:provider.environment.GOOGLE_CLIENT_SECRET}
+        authorize_scopes: "profile email openid"
+      AttributeMapping:
+        email: "email"
+
+  CognitoUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: ${self:provider.stage}-${self:service}
+      UserPoolId:
+        Ref: CognitoUserPool
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn:
+      - CognitoUserPoolIdentityProvider
+    Properties:
+      # Generate an app client name based on the stage
+      ClientName: ${self:provider.stage}-user-pool-client
+      UserPoolId:
+        Ref: CognitoUserPool
+      ExplicitAuthFlows:
+        - ADMIN_NO_SRP_AUTH
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      SupportedIdentityProviders:
+        - Google
+      AllowedOAuthScopes:
+        - "profile"
+        - "email"
+        - "openid"
+        - "aws.cognito.signin.user.admin"
+      AllowedOAuthFlows:
+        - code
+      LogoutURLs:
+        - http://localhost:3000/signout
+      CallbackURLs:
+        - http://localhost:3000/
+
+# Print out the Id of the User Pool that is created
+Outputs:
+  UserPoolId:
+    Value:
+      Ref: CognitoUserPool
+
+  UserPoolClientId:
+    Value:
+      Ref: CognitoUserPoolClient
+
+  CognitoUserPoolDomain:
+    Value:
+      Ref: CognitoUserPoolDomain
+
+  CognitoUserPoolIdentityProvider:
+    Value:
+      Ref: CognitoUserPoolIdentityProvider
